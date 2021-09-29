@@ -147,18 +147,17 @@ class Reticulado(object):
         return np.array(f)
 
 
-    def obtener_factores_de_utilizacion(self, f):
-        
-        """Implementar"""   
-        
-        return 0
+    def obtener_factores_de_utilizacion(self, f, ϕ=0.9):
+        fact_ut=np.zeros((len(self.barras))
+        for i,barra in enumerate(self.barras):
+            fact_ut[i]= b.obtener_factores_de_utilizacion(f[i],ϕ)
+        return fact_ut             
+
 
     def rediseñar(self, Fu, ϕ=0.9):
+        for i,barras in enumerate(self.barras):
+            print(f"Rediseñar {i} para {b.rediseñar(Fu[i], self, ϕ)}")
         
-        """Implementar"""   
-        
-        return 0
-
 
 
     def chequear_diseño(self, Fu, ϕ=0.9):
@@ -168,7 +167,34 @@ class Reticulado(object):
                 print(f"Barra {i} no cumple algún criterio")
                 cumple= False
         return cumple 
+    
+    def guardar(self, nombre):
+        import h5py
+        datas= h5py.File(nombre, "w")
         
+        datas["xyz"]= self.xyz
+
+
+        
+    def abrir(self, nombre):
+        import h5py
+        f= h5py.File(nombre, "r")
+        barras= f["barras"]
+        cargas= f["cargas"]
+        cargas_val= f["cargas_val"]
+        restricciones= f["restricciones"]
+        restricciones_val= f["restricciones_val"]
+        secciones= f["secciones"]
+        xyz= f["xyz"]
+        
+        for i, barras in enumerate(barras):
+        for i, cargas in enumerate():
+        for i, restricciones in enumerate():
+        for i, xyz in enumerate(barras):
+        
+        fid.close()
+
+
 
 
     def __str__(self):
@@ -210,4 +236,3 @@ class Reticulado(object):
         s+="\n"
         
         return s
-    
