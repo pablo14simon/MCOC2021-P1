@@ -1,6 +1,6 @@
 import numpy as np
 
-from constantes import g_, ρ_acero, E_acero
+from constantes import g_, ρ_acero, E_acero,  σy_acero
 
 
 class Barra(object):
@@ -112,22 +112,67 @@ class Barra(object):
         
         return se
 
-    def chequear_diseño(self, Fu, ret, ϕ=0.9):
-        
-        """Implementar"""	
-        
-        return 0
+    def chequear_diseño(self, Fu, ret, ϕ=0.9, silence=False):
+
+        area = self.seccion.area()
+        peso = self.seccion.peso()
+        inercia_xx = self.seccion.inercia_xx()
+        inercia_yy = self.seccion.inercia_yy()
+        nombre = self.seccion.nombre()
+
+        #Resistencia nominal
+        Fn = area * σy_acero
+
+        #Revisar resistencia nominal
+        if abs(Fu) > ϕ*Fn:
+            if not silence:
+                print(f"Resistencia nominal Fu = {Fu} ϕ*Fn = {ϕ*Fn}")
+            return False
+
+        L = self.calcular_largo(ret)
+
+        #Inercia es la minima
+        I = min(inercia_xx, inercia_yy)
+        i = np.sqrt(I/area)
+
+        #Revisar radio de giro
+        if Fu >= 0 and L/i > 300:
+            if not silence:
+                print(f"Esbeltez Fu = {Fu} L/i = {L/i}")
+            return False
+
+        #Revisar carga critica de pandeo
+        if Fu < 0:  #solo en traccion
+            Pcr = np.pi**2*E_acero*I / L**2
+            if abs(Fu) > Pcr:
+                if not silence:
+                    print(f"Pandeo Fu = {Fu} Pcr = {Pcr}")
+                return False
+
+        #Si pasa todas las pruebas, estamos bien
+        return True
+
+
+
+
+
+
+
+
 
     def obtener_factor_utilizacion(self, Fu, ϕ=0.9):
-        
-        """Implementar"""	
-        
-        return 0
+        A = self.seccion.area()
+        Fn = A * σy_acero
+
+        return abs(Fu) / (ϕ*Fn)
+
 
     def rediseñar(self, Fu, ret, ϕ=0.9):
-        
-        """Implementar"""	
-        
-        return 0
-
-
+        """Para la fuerza Fu (proveniente de una combinacion de cargas)
+        re-calcular el radio y el espesor de la barra de modo que
+        se cumplan las disposiciones de diseño lo más cerca posible
+        a FU = 1.0.
+        """
+        self.R = 0.9*self.R   #cambiar y poner logica de diseño
+        self.t = 0.9*self.t   #cambiar y poner logica de diseño
+        return None
