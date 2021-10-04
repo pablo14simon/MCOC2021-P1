@@ -149,7 +149,7 @@ class Reticulado(object):
 
     def obtener_factores_de_utilizacion(self, f, ϕ=0.9):
         fact_ut=np.zeros((len(self.barras))
-        for i,barra in enumerate(self.barras):
+        for i,b in enumerate(self.barras):
             fact_ut[i]= b.obtener_factores_de_utilizacion(f[i],ϕ)
         return fact_ut             
 
@@ -167,32 +167,106 @@ class Reticulado(object):
                 print(f"Barra {i} no cumple algún criterio")
                 cumple= False
         return cumple 
-    
+   
     def guardar(self, nombre):
         import h5py
-        datas= h5py.File(nombre, "w")
-        
-        datas["xyz"]= self.xyz
+
+        fid = h5py.File(nombre, "w")
+
+        fid["xyz"] = self.xyz
+
+        Nbarras = len(self.barras)
+        barras = np.zeros((Nbarras,2), dtype=np.int32)
+        secciones = fid.create_dataset("secciones", shape=(Nbarras,1), dtype=h5py.string_dtype())
+
+        for i, b in enumerate(self.barras):
+            barras[i,0] = b.ni
+            barras[i,1] = b.nj
+            secciones[i] = b.seccion.nombre()
+
+        fid["barras"] = barras
+
+        data_rest = fid.create_dataset("restricciones", (1,2), maxshape=(None,2), dtype=np.int32)
+        data_rest_val = fid.create_dataset("restricciones_val", (1,), maxshape=(None,), dtype=np.double)
+        nr = 0
+        for nodo in  self.restricciones:
+            for gdl, val in self.restricciones[nodo]:
+                data_rest.resize((nr+1,2))
+                data_rest_val.resize((nr+1,))
+                data_rest[nr, 0] = nodo
+                data_rest[nr, 1] = gdl
+                data_rest_val[nr] = val
+                nr += 1
 
 
-        
+        data_cargas = fid.create_dataset("cargas", (1,2), maxshape=(None,2), dtype=np.int32)
+        data_cargas_val = fid.create_dataset("cargas_val", (1,), maxshape=(None,), dtype=np.double)
+        nr = 0
+        for nodo in  self.cargas:
+            for gdl, val in self.cargas[nodo]:
+                data_cargas.resize((nr+1,2))
+                data_cargas_val.resize((nr+1,))
+                data_cargas[nr, 0] = nodo
+                data_cargas[nr, 1] = gdl
+                data_cargas_val[nr] = val
+                nr += 1
+
+
     def abrir(self, nombre):
         import h5py
-        f= h5py.File(nombre, "r")
-        barras= f["barras"]
-        cargas= f["cargas"]
-        cargas_val= f["cargas_val"]
-        restricciones= f["restricciones"]
-        restricciones_val= f["restricciones_val"]
-        secciones= f["secciones"]
-        xyz= f["xyz"]
-        
-        for i, barras in enumerate(barras):
-        for i, cargas in enumerate():
-        for i, restricciones in enumerate():
-        for i, xyz in enumerate(barras):
-        
-        fid.close()
+        from secciones import SeccionICHA
+        from barra import Barra
+
+        fid = h5py.File(nombre, "r")
+
+        xyz = fid["xyz"][:,:]
+
+        Nnodos = xyz.shape[0]
+
+        for i in range(Nnodos):
+            self.agregar_nodo(xyz[i,0], xyz[i,1], xyz[i,2])
+
+        barras = fid["barras"]
+        secciones = fid["secciones"]
+        cargas = fid["cargas"]
+        cargas_val = fid["cargas_val"]
+        restricciones = fid["restricciones"]
+        restricciones_val = fid["restricciones_val"]
+
+        Nbarras = fid["barras"].shape[0]
+
+        dict_secciones = {}
+
+        for i in range(Nbarras):
+            ni = barras[i,0]
+            nj = barras[i,1]
+
+            den = str(secciones[i])
+
+            if den[0] == "[" and den[-1] == "]":
+                den = den[1:-1]
+
+
+            if not den in dict_secciones:
+                dict_secciones[den] = SeccionICHA(den)
+
+            self.agregar_barra(Barra(ni,nj,dict_secciones[den]))
+            
+
+        for i in range(restricciones.shape[0]):
+            nodo = restricciones[i,0]
+            gdl = restricciones[i,1]
+            val = restricciones_val[i]
+
+            self.agregar_restriccion(nodo, gdl, val)
+
+        for i in range(cargas.shape[0]):
+            nodo = cargas[i,0]
+            gdl = cargas[i,1]
+            val = cargas_val[i]
+
+            self.agregar_fuerza(nodo, gdl, val)    
+
 
 
 
@@ -236,3 +310,4 @@ class Reticulado(object):
         s+="\n"
         
         return s
+    
